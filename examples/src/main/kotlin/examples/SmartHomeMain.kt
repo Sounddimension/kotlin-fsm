@@ -15,14 +15,14 @@ fun main() = runBlocking {
     val heating = State<SHState, SHEvent>(timeoutMillis = 50).apply {
         addEnterHook { println("🔥 Heating ON") }
         addExitHook  { println("🔥 Heating OFF") }
-        on(SHEvent.TEMP_HIGH) { Transition(SHState.IDLE) }
-        on(SHEvent.TIMEOUT)   { Transition(SHState.HEATING) }
+        on(SHEvent.TEMP_HIGH) { Transition(SHState.IDLE) }    // nått måltemp
+        on(SHEvent.TIMEOUT)   { Transition(SHState.HEATING) } // heartbeat
     }
     val cooling = State<SHState, SHEvent>(timeoutMillis = 50).apply {
         addEnterHook { println("❄️ Cooling ON") }
         addExitHook  { println("❄️ Cooling OFF") }
-        on(SHEvent.TEMP_LOW)  { Transition(SHState.IDLE) }
-        on(SHEvent.TIMEOUT)   { Transition(SHState.COOLING) }
+        on(SHEvent.TEMP_LOW)  { Transition(SHState.IDLE) }    // nått måltemp
+        on(SHEvent.TIMEOUT)   { Transition(SHState.COOLING) } // heartbeat
     }
 
     val fsm = FSM(
@@ -35,9 +35,16 @@ fun main() = runBlocking {
         timeoutEvent = SHEvent.TIMEOUT
     )
 
-    fsm.handleEvent(Event(SHEvent.TEMP_LOW))   // -> HEATING
-    delay(10)
-    fsm.handleEvent(Event(SHEvent.TEMP_HIGH))  // -> IDLE
+    // IDLE -> HEATING
+    fsm.handleEvent(Event(SHEvent.TEMP_LOW))
+    delay(20)
+    // HEATING -> IDLE
+    fsm.handleEvent(Event(SHEvent.TEMP_HIGH))
+    // IDLE -> COOLING
+    fsm.handleEvent(Event(SHEvent.TEMP_HIGH))
+    delay(20)
+    // COOLING -> IDLE
+    fsm.handleEvent(Event(SHEvent.TEMP_LOW))
 
-    println("Current: ${fsm.currentState}")
+    println("Current: ${fsm.currentState}") // IDLE
 }

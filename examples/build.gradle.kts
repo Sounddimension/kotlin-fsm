@@ -27,3 +27,13 @@ tasks.register<JavaExec>("runSpeaker") {
     classpath = sourceSets["main"].runtimeClasspath
     mainClass.set("examples.SpeakerMainKt")
 }
+tasks.register<JavaExec>("runTrafficLight") {
+    group = "application"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("examples.TrafficLightMainKt")
+}
+tasks.register<JavaExec>("runDRY") {
+    group = "application"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("examples.DRYKt")
+}

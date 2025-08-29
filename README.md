@@ -1,7 +1,8 @@
 # Kotlin FSM
 
-Ett generiskt Finite State Machine (FSM) bibliotek för Kotlin/JVM, inspirerat av motsvarande implementation i Swift och Python.  
-Kan användas i rena Kotlin-projekt såväl som Android-appar.
+Generic Finite State Machine (FSM) library for Kotlin/JVM.  
+Can be used in pure Kotlin-projects as well as Android-apps.
+
 
 ## Installation
 

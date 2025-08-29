@@ -12,3 +12,4 @@ plugins {
 
 rootProject.name = "kotlin-fsm"
 include("lib")
+include("lib", "examples")

@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.gradle.api.tasks.compile.JavaCompile
 
 plugins {
     kotlin("jvm") version "1.9.23"
@@ -8,11 +9,19 @@ plugins {
 repositories { mavenCentral() }
 
 kotlin {
-    jvmToolchain(21)
+    jvmToolchain(17)
     compilerOptions { jvmTarget.set(JvmTarget.JVM_1_8) }
 }
 
-java { withSourcesJar(); withJavadocJar() }
+java {
+    toolchain { languageVersion.set(JavaLanguageVersion.of(17)) }
+    withSourcesJar()
+    withJavadocJar()
+}
+
+tasks.withType<JavaCompile>().configureEach {
+    options.release.set(8)
+}
 
 dependencies {
     // Tester

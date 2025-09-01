@@ -34,7 +34,7 @@ publishing {
             from(components["java"])
             groupId = "com.sounddimension"
             artifactId = "kotlin-fsm"
-            version = System.getenv("VERSION") ?: "0.1.0" // Set ENV variable VERSION in CI/CD pipeline (GitHub Actions)
+            version = System.getenv("VERSION") ?: "0.1.1" // Set ENV variable VERSION in CI/CD pipeline (GitHub Actions)
             println("Publishing version: $version")
         }
     }
@@ -43,10 +43,12 @@ publishing {
             name = "GitHubPackages"
             url = uri("https://maven.pkg.github.com/Sounddimension/kotlin-fsm")
             credentials {
-                username = providers.gradleProperty("gpr.user")
-                    .orElse(providers.environmentVariable("GPR_USER")).get()
-                password = providers.gradleProperty("gpr.key_write_packages")
-                    .orElse(providers.environmentVariable("GPR_PACK_PAT")).get()
+                username = providers.environmentVariable("GPR_USER")
+                    .orElse(providers.environmentVariable("GITHUB_ACTOR"))
+                    .orElse("unknown").get()
+                password = providers.environmentVariable("GPR_PAT")
+                    .orElse(providers.environmentVariable("GITHUB_TOKEN"))
+                    .orElse("missing").get()
             }
         }
     }

@@ -1,0 +1,33 @@
+name: Build & Publish (GitHub Packages)
+
+on:
+  push:
+    tags: ['v*']   # t.ex. v0.1.1
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write   # GITHUB_TOKEN får skriva paket
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v3
+
+      - name: Build & Test
+        run: ./gradlew clean build --no-configuration-cache
+
+      - name: Publish to GitHub Packages
+        env:
+          VERSION: ${{ github.ref_name }}          # t.ex. "v0.1.1" (Alltså taggens namn)
+          GPR_USER: ${{ github.actor }}
+          GPR_PAT:  ${{ secrets.GITHUB_TOKEN }}    # har write:packages
+        run: |
+          export VERSION="${VERSION#v}"            
+          ./gradlew publish --no-configuration-cache

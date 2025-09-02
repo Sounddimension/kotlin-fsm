@@ -1,50 +1,32 @@
 package fsm
 
-/**
- * Base class for states in the FSM
- */
 open class State<S : Enum<S>, E : Enum<E>>(
     val timeoutMillis: Long? = null,
     val verbose: Boolean = false
 ) {
-    // Event handlers for this state
     private val handlers = mutableMapOf<E, (Event<E>) -> Transition<S>?>()
 
-    // Enter/exit hooks
     internal val enterHooks = mutableListOf<(S) -> Unit>()
     internal val exitHooks  = mutableListOf<(S) -> Unit>()
 
-    /**
-     * Add a handler for a specific event type
-     */
+    private val enterHooksWithPayload = mutableListOf<(S, Any?) -> Unit>()
+    private val exitHooksWithPayload  = mutableListOf<(S, Any?) -> Unit>()
+
     fun on(eventType: E, handler: (Event<E>) -> Transition<S>?) {
         handlers[eventType] = handler
     }
 
-    /**
-     * Add a hook that runs when entering this state
-     */
-    fun addEnterHook(hook: (S) -> Unit) {
-        enterHooks.add(hook)
-    }
+    fun addEnterHook(hook: (S) -> Unit) { enterHooks.add(hook) }
+    fun addExitHook(hook: (S) -> Unit)  { exitHooks.add(hook) }
+    fun addEnterHookWithPayload(hook: (S, Any?) -> Unit) { enterHooksWithPayload.add(hook) }
+    fun addExitHookWithPayload(hook: (S, Any?) -> Unit)  { exitHooksWithPayload.add(hook) }
 
-    /**
-     * Add a hook that runs when exiting this state
-     */
-    fun addExitHook(hook: (S) -> Unit) {
-        exitHooks.add(hook)
-    }
-
-    /**
-     * Handle an event and return a transition if state should change
-     */
     fun handleEvent(event: Event<E>, stateName: String, catchExceptions: Boolean = false): Transition<S>? {
         val handler = handlers[event.type]
         if (handler == null) {
             if (verbose) println("No handler for event ${event.type} in state $stateName")
             return null
         }
-
         return if (catchExceptions) {
             try {
                 handler(event)
@@ -57,17 +39,20 @@ open class State<S : Enum<S>, E : Enum<E>>(
         }
     }
 
-    /**
-     * Execute enter hooks
-     */
     internal fun executeEnterHooks(state: S) {
-        for (hook in enterHooks) hook(state)
+        enterHooks.forEach { it(state) }
+    }
+    internal fun executeExitHooks(state: S) {
+        exitHooks.forEach { it(state) }
     }
 
-    /**
-     * Execute exit hooks
-     */
-    internal fun executeExitHooks(state: S) {
-        for (hook in exitHooks) hook(state)
+    // Nya exekverare med payload
+    internal fun executeEnterHooks(state: S, payload: Any?) {
+        executeEnterHooks(state)
+        enterHooksWithPayload.forEach { it(state, payload) }
+    }
+    internal fun executeExitHooks(state: S, payload: Any?) {
+        executeExitHooks(state)
+        exitHooksWithPayload.forEach { it(state, payload) }
     }
 }

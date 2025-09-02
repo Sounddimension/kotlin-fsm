@@ -2,9 +2,6 @@ package fsm
 
 import kotlinx.coroutines.*
 
-/**
- * Generic Finite State Machine with optional timeouts and hooks
- */
 class FSM<S : Enum<S>, E : Enum<E>>(
     initialState: S,
     private val stateObjects: Map<S, State<S, E>>,
@@ -21,116 +18,99 @@ class FSM<S : Enum<S>, E : Enum<E>>(
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private var timerJob: Job? = null
 
-    // Extra hooks defined at FSM level
+    // Befintliga FSM-nivå hooks (behålls)
     private val enterHooks = mutableMapOf<S, MutableList<(S) -> Unit>>()
     private val exitHooks  = mutableMapOf<S, MutableList<(S) -> Unit>>()
+
+    // NYTT: FSM-nivå hooks med payload
+    private val enterHooksWithPayload = mutableMapOf<S, MutableList<(S, Any?) -> Unit>>()
+    private val exitHooksWithPayload  = mutableMapOf<S, MutableList<(S, Any?) -> Unit>>()
 
     init {
         require(stateObjects.containsKey(initialState)) { "Initial state $initialState not found" }
         errorState?.let { require(stateObjects.containsKey(it)) { "Error state $it not found" } }
-
         if (validateTransitions) {
-            // TODO: We can’t fully validate closures in Kotlin, same som i Swift
+            // (behåll framtida validering här)
         }
-
-        if (timeoutEvent != null && !debugMode) {
-            startTimer(initialState)
-        }
+        if (timeoutEvent != null && !debugMode) startTimer(initialState)
     }
 
-    /**
-     * Add a hook that runs when entering a state
-     */
+    // Befintliga API
     fun addEnterHook(state: S, hook: (S) -> Unit) {
         enterHooks.getOrPut(state) { mutableListOf() }.add(hook)
     }
-
-    /**
-     * Add a hook that runs when exiting a state
-     */
     fun addExitHook(state: S, hook: (S) -> Unit) {
         exitHooks.getOrPut(state) { mutableListOf() }.add(hook)
     }
 
-    /**
-     * Start a timeout timer for given state (if timeoutMillis and timeoutEvent are set)
-     */
+    // NYTT API
+    fun addEnterHookWithPayload(state: S, hook: (S, Any?) -> Unit) {
+        enterHooksWithPayload.getOrPut(state) { mutableListOf() }.add(hook)
+    }
+    fun addExitHookWithPayload(state: S, hook: (S, Any?) -> Unit) {
+        exitHooksWithPayload.getOrPut(state) { mutableListOf() }.add(hook)
+    }
+
     private fun startTimer(state: S) {
         if (debugMode) {
             if (verbose) println("Debug mode: skipping timer for $state")
             return
         }
         cancelTimer()
-
         val timeout = stateObjects[state]?.timeoutMillis ?: return
         val event = timeoutEvent ?: return
-
         timerJob = scope.launch {
             delay(timeout)
             handleEvent(Event(event))
         }
     }
 
-    private fun cancelTimer() {
-        timerJob?.cancel()
-        timerJob = null
-    }
+    private fun cancelTimer() { timerJob?.cancel(); timerJob = null }
 
-    /**
-     * Handle an incoming event
-     */
     fun handleEvent(event: Event<E>) {
-        val current = currentState
-        val stateObj = stateObjects[current] ?: run {
-            if (verbose) println("No state object for $current")
-            return
+        val from = currentState
+        val stateObj = stateObjects[from] ?: run {
+            if (verbose) println("No state object for $from"); return
         }
 
-        val transition = stateObj.handleEvent(event, current.name) ?: return
-        if (transition.toState == current) return // no change
+        val transition = stateObj.handleEvent(event, from.name) ?: return
+        val to = transition.toState
+        if (to == from) return
 
-        // Exit current
+        // EXIT
         cancelTimer()
-        stateObj.executeExitHooks(current)
-        exitHooks[current]?.forEach { it(current) }
+        stateObj.executeExitHooks(from, transition.payload)
+        exitHooks[from]?.forEach { it(from) }
+        exitHooksWithPayload[from]?.forEach { it(from, transition.payload) }
 
-        // Switch
-        val newState = stateObjects[transition.toState] ?: run {
-            if (verbose) println("No state object for ${transition.toState}")
-            return
+        // SWITCH
+        val newState = stateObjects[to] ?: run {
+            if (verbose) println("No state object for $to"); return
         }
-        currentState = transition.toState
+        currentState = to
 
-        // Enter new
-        newState.executeEnterHooks(currentState)
+        // ENTER
+        newState.executeEnterHooks(currentState, transition.payload)
         enterHooks[currentState]?.forEach { it(currentState) }
+        enterHooksWithPayload[currentState]?.forEach { it(currentState, transition.payload) }
 
         if (!debugMode) startTimer(currentState)
+        if (verbose) println("FSM: $from --(${event.type})--> $to payload=${transition.payload}")
     }
 
-    /**
-     * Shutdown the FSM
-     */
     fun shutdown() {
         cancelTimer()
         scope.cancel()
         if (verbose) println("FSM shutdown complete")
     }
 
-    /**
-     * Transition to error state due to exception
-     */
     private fun transitionToErrorState(ex: Throwable) {
         val err = errorState ?: return
         cancelTimer()
-
-        val currentObj = stateObjects[currentState]
-        currentObj?.executeExitHooks(currentState)
-
+        stateObjects[currentState]?.executeExitHooks(currentState)
         val prev = currentState
         currentState = err
-        val errObj = stateObjects[err]
         if (verbose) println("Transition $prev -> $err due to ${ex.message}")
-        errObj?.executeEnterHooks(err)
+        stateObjects[err]?.executeEnterHooks(err)
     }
 }

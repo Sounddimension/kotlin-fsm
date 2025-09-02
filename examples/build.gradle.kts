@@ -37,3 +37,8 @@ tasks.register<JavaExec>("runDRY") {
     classpath = sourceSets["main"].runtimeClasspath
     mainClass.set("examples.DRYKt")
 }
+tasks.register<JavaExec>("runPayload") {
+    group = "application"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("examples.TransitionPayloadKt")
+}

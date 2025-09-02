@@ -43,7 +43,7 @@ publishing {
             from(components["java"])
             groupId = "com.sounddimension"
             artifactId = "kotlin-fsm"
-            version = System.getenv("VERSION") ?: "0.1.3" // Set ENV variable VERSION in CI/CD pipeline (GitHub Actions)
+            version = System.getenv("VERSION") ?: "0.1.4" // Set ENV variable VERSION in CI/CD pipeline (GitHub Actions)
             println("Publishing version: $version")
         }
     }
